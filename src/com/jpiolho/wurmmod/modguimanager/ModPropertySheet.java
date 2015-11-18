@@ -20,6 +20,9 @@ import java.util.Optional;
 import java.util.Properties;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import org.controlsfx.control.PropertySheet;
@@ -44,6 +47,7 @@ public class ModPropertySheet extends VBox {
         PropertySheet propertySheet = new PropertySheet(this.list);
         VBox.setVgrow(propertySheet, Priority.ALWAYS);
         this.getChildren().add(propertySheet);
+        
     }
     
     public void save()
@@ -94,7 +98,35 @@ public class ModPropertySheet extends VBox {
             ex.printStackTrace();
         }
         
+        for(String key : this.properties.keySet())
+            this.properties.get(key).saved();
+    }
+    
+    public boolean askIfSave() {
+        Alert alert = new Alert(AlertType.CONFIRMATION);
+        alert.setTitle("Unsaved changes!");
+        alert.setHeaderText("There are unsaved changes in the mod tab");
+        alert.setContentText("Do you want to save the changes?");
+        Optional result = alert.showAndWait();
+        if(result.get() == ButtonType.OK) {
+           this.save();
+           return true;
+        }
         
+        return false;
+    }
+    
+    public boolean hasChanges() {
+        if(this.properties == null)
+            return false;
+        
+        for(String key : this.properties.keySet())
+        {
+            if(this.properties.get(key).hasChanged())
+                return true;
+        }
+        
+        return false;
     }
     
     public void setMod(ModEntry mod) throws FileNotFoundException, IOException
@@ -186,6 +218,7 @@ public class ModPropertySheet extends VBox {
                 case String: entry.setValue(value);
             }
             
+            entry.setOriginalValue(entry.getValue());
             
             properties.put(key, entry);
             
@@ -208,6 +241,8 @@ public class ModPropertySheet extends VBox {
         } else {
             this.setVisible(true);
         }
+        
+        
     }
     
     
@@ -218,6 +253,8 @@ public class ModPropertySheet extends VBox {
         private String description = "";
         private String category = "Mod";
         private PropertyEntryType type = PropertyEntryType.Unspecified;
+        
+        private Object originalValue = null;
         
         public PropertyEntry()
         {
@@ -243,8 +280,14 @@ public class ModPropertySheet extends VBox {
             return this.description;
         }
         
+        public void setOriginalValue(Object value)
+        {
+            this.originalValue = value;
+        }
+        
         public void setValue(Object value)
         {
+            
             this.value = value;
         }
         
@@ -270,7 +313,14 @@ public class ModPropertySheet extends VBox {
         public void setCategory(String category) {
             this.category = category;
         }
-        
+
+        public boolean hasChanged() {
+            return !this.originalValue.equals(this.value);
+        }
+     
+        public void saved() {
+            this.originalValue = this.value;
+        }
     }
     
     enum PropertyEntryType

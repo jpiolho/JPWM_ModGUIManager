@@ -14,13 +14,16 @@ import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.logging.Level;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ListCell;
@@ -59,6 +62,13 @@ public class Mod implements WurmMod,Initable {
     private ModPropertySheet propertySheet;
     private Button buttonSave;
     
+    
+    private int tabID;
+    
+    private boolean madeChanges = false;
+    
+    private ModEntry currentMod = null;
+    
     @Override
     public void init() {
         final Mod thisMod = this;
@@ -82,6 +92,39 @@ public class Mod implements WurmMod,Initable {
                     };
                 }
             });
+            
+            HookManager.getInstance().registerHook("com.wurmonline.server.gui.WurmServerGuiController", "checkIfWeWantToSaveTab", Descriptor.ofMethod(CtClass.voidType, new CtClass[] { CtClass.intType, CtClass.intType }), new InvocationHandlerFactory() {
+
+                @Override
+                public InvocationHandler createInvocationHandler() {
+                    return new InvocationHandler() {
+
+                        @Override
+                        public Object invoke(Object o, Method method, Object[] os) throws Throwable {
+                            int oldvalue = (Integer)os[0];
+                            int newvalue = (Integer)os[1];
+                            
+                            if(oldvalue != newvalue && oldvalue == tabID) {
+                                if(propertySheet.hasChanges()) {
+                                    if(propertySheet.askIfSave())
+                                        madeChanges = true;
+                                }
+                                
+                                if(madeChanges) {
+                                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                                    alert.setTitle("Restart required");
+                                    alert.setHeaderText("Restart required");
+                                    alert.setContentText("You have to restart the server (including the GUI) to have the changes to apply");
+                                    alert.showAndWait();
+                                    madeChanges = false;
+                                }
+                            }
+                            
+                            return method.invoke(o, os);
+                        }
+                    };
+                }
+            });
         }
         catch(NotFoundException ex)
         {
@@ -91,11 +134,18 @@ public class Mod implements WurmMod,Initable {
     
     
     private void handleComboboxMod(ActionEvent event)
-    {
+    {    
         ModEntry entry = cbMod.getSelectionModel().getSelectedItem();
         
         if(entry == null)
             return;
+        
+        if(entry != this.currentMod) {
+            if(propertySheet.hasChanges())
+                propertySheet.askIfSave();
+        }
+        
+        this.currentMod = entry;
         
         checkModEnabled.setSelected(!entry.isDisabled());   
         
@@ -116,6 +166,7 @@ public class Mod implements WurmMod,Initable {
         
         selectedMod.setEnabled(checkModEnabled.isSelected());
         
+        madeChanges = true;
         
         ObservableList<ModEntry> entries = cbMod.getItems();
         ArrayList<ModEntry> arr = new ArrayList<>();
@@ -130,6 +181,7 @@ public class Mod implements WurmMod,Initable {
     private void handleButtonSave(ActionEvent event)
     {
         propertySheet.save();
+        madeChanges = true;
     }
     
     private void createGUI(Stage stage)
@@ -205,6 +257,10 @@ public class Mod implements WurmMod,Initable {
 
         TabPane pane = (TabPane)stage.getScene().getRoot();
         Tab tab = new Tab("Mods",scrollPane);
+        
+        this.tabID = pane.getTabs().size();
         pane.getTabs().add(tab);
+        
+        
     }
 }
