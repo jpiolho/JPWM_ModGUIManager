@@ -186,6 +186,8 @@ public class ModPropertySheet extends VBox {
                         case "category": entry.setCategory(metaValue); break;
                         default: gotMeta = false; break;
                     }
+                } else {
+                    gotMeta = false;
                 }
                 
                 if(!gotMeta)
