@@ -35,6 +35,13 @@ import org.controlsfx.property.editor.PropertyEditor;
  */
 public class ModPropertySheet extends VBox {
     
+    private static final String[] ignoredKeys = new String[] {
+        "classpath",
+        "classname",
+        "sharedclassloader",
+        "serverpacks"
+    };
+    
     private ModEntry mod;
     private final ObservableList list;
     
@@ -232,7 +239,16 @@ public class ModPropertySheet extends VBox {
         
         for(String key : properties.keySet())
         {
-            if(key.equalsIgnoreCase("classpath") || key.equalsIgnoreCase("classname") || key.equalsIgnoreCase("sharedclassloader"))
+            boolean ignore = false;
+            for(String ignored : ignoredKeys) {
+                if(key.equalsIgnoreCase(ignored))
+                {
+                    ignore = true;
+                    break;
+                }
+            }
+            
+            if(ignore)
                 continue;
             
             this.list.add(new CustomPropertyItem(this, properties.get(key)));
