@@ -177,7 +177,8 @@ public class ModPropertySheet extends VBox {
                         case "name": entry.setName(metaValue); break;
                         case "type": 
                         {
-                            switch(metaValue)
+                            String[] split = metaValue.split(",");
+                            switch(split[0])
                             {
                                 default:
                                 case "string": entry.setType(PropertyEntryType.String); break;
@@ -186,9 +187,23 @@ public class ModPropertySheet extends VBox {
                                 case "float": entry.setType(PropertyEntryType.Float); break;
                                 case "double": entry.setType(PropertyEntryType.Double); break;
                                 case "money": entry.setType(PropertyEntryType.Money); break;
+                                case "choice": entry.setType(PropertyEntryType.Choice); break;
                             }
                             break;
-                        } 
+                        }
+                        case "values":
+                            String[] split = metaValue.split(",");
+                            
+                            PropertyEntryChoice[] choices = new PropertyEntryChoice[split.length];
+                            
+                            for(int x=0;x<split.length;x++) {
+                                String[] split2 = split[x].split("=");
+                                
+                                choices[x] = new PropertyEntryChoice(split2[0], split2[1]);
+                            }
+                            
+                            entry.setChoices(choices);
+                            break;
                         case "description": entry.setDescription(metaValue); break;
                         case "category": entry.setCategory(metaValue); break;
                         default: gotMeta = false; break;
@@ -223,7 +238,7 @@ public class ModPropertySheet extends VBox {
                 case Integer: entry.setValue(Integer.parseInt(value)); break;
                 case Float: entry.setValue(Float.parseFloat(value)); break;
                 case Double: entry.setValue(Double.parseDouble(value)); break;
-                    
+                case Choice:
                 case String: entry.setValue(value);
             }
             
@@ -264,6 +279,28 @@ public class ModPropertySheet extends VBox {
     }
     
     
+    class PropertyEntryChoice
+    {
+        private String name;
+        private String value;
+
+        public PropertyEntryChoice(String name,String value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+
+        @Override
+        public String toString() {
+            return this.name;
+        }
+        
+        
+    }
+    
     class PropertyEntry 
     {
         private String name = "";
@@ -271,6 +308,8 @@ public class ModPropertySheet extends VBox {
         private String description = "";
         private String category = "Mod";
         private PropertyEntryType type = PropertyEntryType.Unspecified;
+        
+        private PropertyEntryChoice[] choices;
         
         private Object originalValue = null;
         
@@ -305,7 +344,6 @@ public class ModPropertySheet extends VBox {
         
         public void setValue(Object value)
         {
-            
             this.value = value;
         }
         
@@ -322,6 +360,14 @@ public class ModPropertySheet extends VBox {
         public PropertyEntryType getType()
         {
             return this.type;
+        }
+
+        public PropertyEntryChoice[] getChoices() {
+            return choices;
+        }
+
+        public void setChoices(PropertyEntryChoice[] choices) {
+            this.choices = choices;
         }
 
         public String getCategory() {
@@ -349,7 +395,8 @@ public class ModPropertySheet extends VBox {
         Integer,
         Float,
         Double,
-        Money
+        Money,
+        Choice
     }
     
     class CustomPropertyItem implements PropertySheet.Item {
@@ -369,6 +416,7 @@ public class ModPropertySheet extends VBox {
                 case Double: return Double.class;
                 case Integer: return Integer.class;
                 case Money: return Money.class;
+                case Choice: return String.class;
             }
         }
 
@@ -377,6 +425,7 @@ public class ModPropertySheet extends VBox {
             
             switch(entry.type) {
                 case Money: return Optional.of(MoneyEditor.class);
+                case Choice: return Optional.of(ChoiceEditor.class);
                 default: return Optional.empty();
             }
         }
@@ -406,6 +455,10 @@ public class ModPropertySheet extends VBox {
         @Override
         public void setValue(Object o) {
             entry.value = o;
+        }
+        
+        public PropertyEntry getEntry() {
+            return this.entry;
         }
     };
 }
